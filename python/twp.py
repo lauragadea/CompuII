@@ -39,9 +39,11 @@ user = api.me()
 #create an INET, STREAMing socket
 serversocket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 print "socket created"
+#Para q no me diga "adress already in use"
+serversocket.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
 
 #bind the socket to a public host,
-serversocket.bind(('127.0.0.1', 7001))
+serversocket.bind(('127.0.0.1', 7000))
 print "socket bind complete"
 #become a server socket
 serversocket.listen(5)
