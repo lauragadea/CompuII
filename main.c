@@ -73,9 +73,10 @@ int main (int argc, char *const argv[]){
 		return -1;
 	}
 	
+
 	memset (&server, 0, sizeof (server));
 	server.sin_family = AF_INET;
-	server.sin_port = htons(7001);
+	server.sin_port = htons(7000);
 	 
 	//esta es la direc q deberia cambiar si cambio de pc?
 	inet_pton (AF_INET, "127.0.0.1", &server.sin_addr);
@@ -119,17 +120,17 @@ int main (int argc, char *const argv[]){
 				/*lleno de ceros el arreglo "comando"*/
 				memset (comando, 0, sizeof comando);
 				memset (line_original, 0, sizeof line_original);
-				strcpy (line_original, line);
+				strncpy (line_original, line, 150);
 				/*ptr apunta al inicio de line. Hago una "copia" para no perderlo (strtok_r me hace perderlo)*/
 				ptr = line;
 			
 				/*parser*/
 				while(token = strtok_r(ptr, " ", &rest)) {
 					
-		    		if (strcmp(token, "timeline") == 0){
+		    		if (strncmp(token, "timeline", 8) == 0){
 		    			/*copio el comando al arreglo comando para escribir en el pipe*/
 		    			
-		    			strcpy(comando, token);
+		    			strncpy(comando, token, 8);
 		    			
 		    			if (write(fd[1], comando, sizeof comando) <0 ){
 		    				perror ("llamada write");
@@ -154,17 +155,17 @@ int main (int argc, char *const argv[]){
 
 		    		    	
 		    			}		
-		    		//strncmp
-		    		}else if(strcmp(token, "tweet") == 0){
+		    		
+		    		}else if(strncmp(token, "tweet", 5) == 0){
 		    				    		
 		    			
-		    			//STRNCPY
-		    			strcpy(comando, token);
+		    			
+		    			strncpy(comando, token, 5);
 		    			//ptr va a tener el resto de la cadena. Puede ser un tweet, un usuario, etc.
 		    			ptr = rest;
 		    			memset (tweet, 0, sizeof tweet);
 		    			//guardo en tweet lo que voy a twitear
-		    			strcpy (tweet, rest);
+		    			strncpy (tweet, rest, strlen(tweet));
 		    			write (1, "sto per scrivire\n", 17);
 		    	
 		    			/*escribo el comando en el pipe*/
@@ -172,7 +173,7 @@ int main (int argc, char *const argv[]){
 		    				perror ("llamada write");
 		    				return -1;
 		    			}
-		    			//write (1, "pase el write\n", 14);
+		    			
 		 
 		    			/*escribo lo q escribio el usuario en el pipe*/
 		    		
@@ -180,7 +181,12 @@ int main (int argc, char *const argv[]){
 		    				perror ("llamada write");
 		    				return -1;
 		    			}
-
+		    			/*delimitador para que seapa hasta adonde leer*/
+		    			if (write(fd[1], fin, strlen(fin)) <0 ){
+		    				perror ("llamada write");
+		    				return -1;
+		    			}
+		    			write (1, "pase los write\n", 15);	
 		    			/*leo lo q me contesta el padre*/
 		    			while ((leido3 = read(fd2[0], respuesta, sizeof respuesta)) > 0){
 
@@ -188,9 +194,7 @@ int main (int argc, char *const argv[]){
 			    				perror ("llamada write");
 			    				return -1;
 		    				}
-		    				
-		    				
-
+		  
 
 		    				/*tengo que indicarle hasta adonde leer*/
 		    				ret_val = strstr(respuesta, fin);
@@ -200,9 +204,9 @@ int main (int argc, char *const argv[]){
 		    					break;
 		    				}
 							
-		    		    	
+		    		    	close (fd2[0]);	
 		    			}	
-		    			close (fd2[0]);	
+		    			
 
 		    			}else{
 		    				write (1, "estoy en else\n", 14);
@@ -241,11 +245,12 @@ int main (int argc, char *const argv[]){
 												
 				leido = read (fd[0], comando, sizeof comando); 
 			
-				if ((strcmp(comando, "timeline")) == 0){
+				if ((strncmp(comando, "timeline", 8)) == 0){
 					c = 1;
 				
-				}else if ((strcmp(comando, "tweet")) == 0){
+				}else if ((strncmp(comando, "tweet", 5)) == 0){
 					c = 2;
+
 					
 				}
 
@@ -272,8 +277,9 @@ int main (int argc, char *const argv[]){
 							}
 							
 						}
-						//write (1, "el padre escribe el token",26);
+						
 						write(fd2[1], fin, strlen(fin));
+
 						break;
 
 					case 2:
@@ -286,10 +292,15 @@ int main (int argc, char *const argv[]){
 								perror ("llamada write");
 								return -1;
 							}
-							close (fd[0]);
+							ret_val = strstr(line_original, fin);
+					
+		    				if (ret_val){
+		    					break;
+		    				}
+							//close (fd[0]);
 						
 						}
-						
+						write (1, "en padre, ya escri", 19);
 						/*leo respuesta del servidor y la escribo en el pipe*/
 						 /*vacio el buf respuesta*/
 					   	memset (respuesta, 0, sizeof respuesta);
@@ -297,15 +308,18 @@ int main (int argc, char *const argv[]){
 					
 						while ((leido2 = read (sd, respuesta, sizeof respuesta)) >0){
 							
+							write (1, "leyendo rta", 12);	
 							
 							if (write(fd2[1], respuesta, leido2) <0){
 								perror ("llamada write");
 								return -1;
 							}
-							write(fd2[1], fin, strlen(fin));
-							close (fd2[1]);
-						}
 						
+
+							
+						}
+						write(fd2[1], fin, strlen(fin));
+						//close (fd2[1]);
 						
 						break;
 					
@@ -324,7 +338,7 @@ int main (int argc, char *const argv[]){
 					return -1;
 				}
 				server.sin_family = AF_INET;
-				server.sin_port = htons(7001);
+				server.sin_port = htons(7000);
 	 
 				//esta es la direc q deberia cambiar si cambio de pc?
 				inet_pton (AF_INET, "127.0.0.1", &server.sin_addr);
