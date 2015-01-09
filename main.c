@@ -32,6 +32,12 @@ int main (int argc, char *const argv[]){
 	/*descriptores pipe2 (para que escriba el padre)*/
 	int fd2[2];
 
+
+
+	char envio[150];
+
+
+
 	
 	char comando[15];
 	char tweet[140];
@@ -76,7 +82,7 @@ int main (int argc, char *const argv[]){
 
 	memset (&server, 0, sizeof (server));
 	server.sin_family = AF_INET;
-	server.sin_port = htons(7000);
+	server.sin_port = htons(8001);
 	 
 	//esta es la direc q deberia cambiar si cambio de pc?
 	inet_pton (AF_INET, "127.0.0.1", &server.sin_addr);
@@ -165,8 +171,10 @@ int main (int argc, char *const argv[]){
 		    			ptr = rest;
 		    			memset (tweet, 0, sizeof tweet);
 		    			//guardo en tweet lo que voy a twitear
-		    			strncpy (tweet, rest, strlen(tweet));
-		    			write (1, "sto per scrivire\n", 17);
+		    			
+		    			strncpy (tweet, ptr, strlen(tweet));
+						write (1, "el tw supuestamente es:", 24);
+						write (1, tweet, strlen(tweet));
 		    	
 		    			/*escribo el comando en el pipe*/
 		   				if (write(fd[1], comando, sizeof comando) <0 ){
@@ -186,7 +194,7 @@ int main (int argc, char *const argv[]){
 		    				perror ("llamada write");
 		    				return -1;
 		    			}
-		    			write (1, "pase los write\n", 15);	
+		    				
 		    			/*leo lo q me contesta el padre*/
 		    			while ((leido3 = read(fd2[0], respuesta, sizeof respuesta)) > 0){
 
@@ -270,8 +278,8 @@ int main (int argc, char *const argv[]){
 					   	memset (timeline, 0, sizeof timeline);
 
 					   	/*leo del socket y escribo el timeline en el pipe para que lea el hijo*/
-					   	while (	(leido2 = read (sd, timeline, sizeof timeline)) > 0){ 
-							if (write(fd2[1], timeline, leido2) <0){
+					   	while (	(leido = read (sd, timeline, sizeof timeline)) > 0){ 
+							if (write(fd2[1], timeline, leido) <0){
 								perror ("llamada write");
 								return -1;
 							}
@@ -287,8 +295,10 @@ int main (int argc, char *const argv[]){
 					   	/*mando al servidor el comando y el tweet*/
 						while ((leido = read(fd[0], line_original, sizeof line_original)) >0){
 							
+					
+
 							//VER COMO RESOLVER. TWITTEA BASURA
-							if(write (sd, line_original, leido) <0){
+							if(write (sd, line_original, leido - 3) <0){
 								perror ("llamada write");
 								return -1;
 							}
@@ -300,7 +310,7 @@ int main (int argc, char *const argv[]){
 							//close (fd[0]);
 						
 						}
-						write (1, "en padre, ya escri", 19);
+						
 						/*leo respuesta del servidor y la escribo en el pipe*/
 						 /*vacio el buf respuesta*/
 					   	memset (respuesta, 0, sizeof respuesta);
@@ -308,7 +318,7 @@ int main (int argc, char *const argv[]){
 					
 						while ((leido2 = read (sd, respuesta, sizeof respuesta)) >0){
 							
-							write (1, "leyendo rta", 12);	
+					
 							
 							if (write(fd2[1], respuesta, leido2) <0){
 								perror ("llamada write");
@@ -338,7 +348,7 @@ int main (int argc, char *const argv[]){
 					return -1;
 				}
 				server.sin_family = AF_INET;
-				server.sin_port = htons(7000);
+				server.sin_port = htons(8001);
 	 
 				//esta es la direc q deberia cambiar si cambio de pc?
 				inet_pton (AF_INET, "127.0.0.1", &server.sin_addr);
