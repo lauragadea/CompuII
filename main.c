@@ -7,6 +7,7 @@ int main (int argc, char *const argv[]){
 	/*socket descriptor*/
 	int sd;
 	
+	int len;
 	//char *hostname = "api.twitter.com";
 	/*socket descriptor totalmente conectado*/
 	int sdtc;
@@ -32,13 +33,13 @@ int main (int argc, char *const argv[]){
 	/*descriptores pipe2 (para que escriba el padre)*/
 	int fd2[2];
 
+	/*para leer el timeline*/
+	char timeline[1024];
+	char *ret_val;
 
 
 	char envio[150];
 
-
-
-	
 	char comando[15];
 	char tweet[140];
 	int c=0;
@@ -51,12 +52,10 @@ int main (int argc, char *const argv[]){
 
 
 	//variables para buscar el token en el timeline
-	char *ret_val;
+	
 	const char fin[5] = "fin\n";
 
 
-	/*para leer el timeline*/
-	char timeline[1024];
 
 	char respuesta[1024];
 
@@ -72,6 +71,8 @@ int main (int argc, char *const argv[]){
 			perror ("pipe 2");
 			return -1;
 	}
+
+
 	//creo el socket
 	sd = socket (PF_INET, SOCK_STREAM, 0);
 	if (sd < 0){
@@ -142,59 +143,49 @@ int main (int argc, char *const argv[]){
 		    				perror ("llamada write");
 		    				return -1;
 		    			}
+
 		    			/*Leo el timeline que me devuelve el padre*/
+		    			readTimeline(fd2);
 
-		    			while ((leido3 = read(fd2[0], timeline, sizeof timeline)) > 0){
 
-
-		    				if(write (1, timeline, leido3) < 0){
-		    					perror ("llamada write");
-		    				return -1;
-		    				}
-		    				/*tengo que indicarle hasta donde leer*/
-		    				ret_val = strstr(timeline, fin);
-					
-		    				if (ret_val){
-		    					memset(timeline, 0, sizeof timeline);
-		    					break;
-		    				}
-
-		    		    	
-		    			}		
+		
 		    		
 		    		}else if(strncmp(token, "tweet", 5) == 0){
 		    				    		
-		    			
-		    			
+		    			/*corroboro la longitud del tweet*/
+						len = verifyTweetLength(line_original);
+						if (len == 1){
+							write (1, "El tweet excede los 140 caracteres\n", 35);
+							break;
+						}
+
 		    			strncpy(comando, token, 5);
 		    			//ptr va a tener el resto de la cadena. Puede ser un tweet, un usuario, etc.
 		    			ptr = rest;
-		    			memset (tweet, 0, sizeof tweet);
-		    			//guardo en tweet lo que voy a twitear
+						
+
+						/*envio el comando en el pipe*/
 		    			
-		    			strncpy (tweet, ptr, strlen(tweet));
-						write (1, "el tw supuestamente es:", 24);
-						write (1, tweet, strlen(tweet));
+		    			if (write(fd[1], comando, sizeof comando) <0 ){
+							perror ("llamada write");
+							return -1;
+						}
+
+
+						/*escribo lo q escribio el usuario en el pipe*/
+
+
+						if (write(fd[1], line_original, sizeof line_original) <0 ){
+							perror ("llamada write");
+							return -1;
+						}
+						/*delimitador para que seapa hasta adonde leer*/
+						if (write(fd[1], fin, 4) <0 ){
+							perror ("llamada write");
+							return -1;
+						}
+		    					    				
 		    	
-		    			/*escribo el comando en el pipe*/
-		   				if (write(fd[1], comando, sizeof comando) <0 ){
-		    				perror ("llamada write");
-		    				return -1;
-		    			}
-		    			
-		 
-		    			/*escribo lo q escribio el usuario en el pipe*/
-		    		
-		    			if (write(fd[1], line_original, sizeof line_original) <0 ){
-		    				perror ("llamada write");
-		    				return -1;
-		    			}
-		    			/*delimitador para que seapa hasta adonde leer*/
-		    			if (write(fd[1], fin, strlen(fin)) <0 ){
-		    				perror ("llamada write");
-		    				return -1;
-		    			}
-		    				
 		    			/*leo lo q me contesta el padre*/
 		    			while ((leido3 = read(fd2[0], respuesta, sizeof respuesta)) > 0){
 
@@ -217,7 +208,7 @@ int main (int argc, char *const argv[]){
 		    			
 
 		    			}else{
-		    				write (1, "estoy en else\n", 14);
+		    		
 			    			if (write (1, "no es un comando valido\n", 25) <0){
 			    				perror ("llamada write");
 			    				return -1;
@@ -252,15 +243,10 @@ int main (int argc, char *const argv[]){
 			while (1){
 												
 				leido = read (fd[0], comando, sizeof comando); 
-			
-				if ((strncmp(comando, "timeline", 8)) == 0){
-					c = 1;
-				
-				}else if ((strncmp(comando, "tweet", 5)) == 0){
-					c = 2;
 
-					
-				}
+				c = checkCommand(comando);
+			
+			
 
 				switch(c){
 			
@@ -294,22 +280,20 @@ int main (int argc, char *const argv[]){
 						
 					   	/*mando al servidor el comando y el tweet*/
 						while ((leido = read(fd[0], line_original, sizeof line_original)) >0){
-							
-					
-
+						
 							//VER COMO RESOLVER. TWITTEA BASURA
 							if(write (sd, line_original, leido - 3) <0){
 								perror ("llamada write");
 								return -1;
 							}
 							ret_val = strstr(line_original, fin);
-					
-		    				if (ret_val){
-		    					break;
-		    				}
-							//close (fd[0]);
-						
+
+							if (ret_val){
+								break;
+							}
+
 						}
+
 						
 						/*leo respuesta del servidor y la escribo en el pipe*/
 						 /*vacio el buf respuesta*/
@@ -373,3 +357,72 @@ int main (int argc, char *const argv[]){
 
 }
 	
+
+int readTimeline (int fd2[2]){
+
+	int leido;
+	/*para leer el timeline*/
+	char timeline[1024];
+	char *ret_val;
+
+
+		while ((leido = read(fd2[0], timeline, sizeof timeline)) > 0){
+
+
+			if(write (1, timeline, leido) < 0){
+				perror ("llamada write");
+			return -1;
+			}
+			/*tengo que indicarle hasta donde leer*/
+			ret_val = strstr(timeline, "fin\n");
+
+			if (ret_val){
+				memset(timeline, 0, sizeof timeline);
+				break;
+			}
+
+	    	
+		}
+		return 0;
+}
+
+int checkCommand(char comando[15]){
+		int c;
+
+		if ((strncmp(comando, "timeline", 8)) == 0){
+			c = 1;
+				
+		}else if ((strncmp(comando, "tweet", 5)) == 0){
+			c = 2;
+
+			
+		}
+		return c;
+}
+
+int verifyTweetLength(char line_original[150]){
+
+	int i;
+	//para que no cuente el comando y el espacio ("tweet ")
+	int charCount = -5;
+	//write (1, "fc new ", 8);
+	//write (1, line_original, strlen(line_original));
+	for (i = 0; line_original[i]; i++){
+		if (line_original[i] != '\0' && line_original[i] != '\n'){
+			charCount++;
+		}
+	}
+
+	write (1, "las letras totales del tw son: ", 32);
+	printf ("%d\n", charCount);
+
+	if (charCount > 140){
+		return 1;
+	}else{
+		return 0;
+	}
+	
+
+	
+
+}
