@@ -281,8 +281,8 @@ int main (int argc, char *const argv[]){
 					   	/*mando al servidor el comando y el tweet*/
 						while ((leido = read(fd[0], line_original, sizeof line_original)) >0){
 						
-							//VER COMO RESOLVER. TWITTEA BASURA
-							if(write (sd, line_original, leido - 3) <0){
+							//A VECES TWITTEA BASURA. strstr
+							if(write (sd, line_original, leido - 4) <0){
 								perror ("llamada write");
 								return -1;
 							}
