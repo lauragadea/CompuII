@@ -43,7 +43,7 @@ print "socket created"
 serversocket.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
 
 #bind the socket to a public host,
-serversocket.bind(('127.0.0.1', 7000))
+serversocket.bind(('127.0.0.1', 8001))
 print "socket bind complete"
 #become a server socket
 serversocket.listen(5)
@@ -70,17 +70,13 @@ while True:
 	
 
 	if (linea.startswith("timeline")):
-		print "empieza con timeline"
 		clientsocket.send('Thank you for connecting ' + user.name + '. Your timeline today: ')
 		tweets = api.home_timeline()
 		for tweet in tweets:
 			clientsocket.sendall (tweet.text)
-		#Guardo el comando sin los \0 que trae del recv 
-		#coms = comando.split("\0")
+		
 
-		#for comandoStr in coms:
-		#	definitivo = comandoStr
-		#break
+		
 	elif (linea.startswith("tweet")):
 		index = linea.find("tweet")
 		comando = linea[0:index+5]
@@ -92,7 +88,19 @@ while True:
 		
 		clientsocket.sendall(res)
 		
+		
 
+	elif (linea.startswith("user")):
+		index = linea.find("user")
+		comando = linea[0:index+4]
+		usuario = linea[index+5:len(linea)]
+
+		result = tweepy.Cursor(api.user_timeline, id=usuario).items(50)
+		clientsocket.send ('Timeline de @' + usuario)
+		for status in result:
+			clientsocket.sendall (status.text)
+
+		
 		
 	else:
 		print "no es un comando valido"
