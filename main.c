@@ -1,18 +1,19 @@
-#include "funciones.h"
+#include "commonLib.h"
 #include "padre.h"
 #include "hijo.h"
+#include "twitter.h"
+
 
 
 
 int main (int argc, char *const argv[]){
-	
 
+	
 	/*socket descriptor*/
 	int sd;
-	
 
 	/*socket descriptor totalmente conectado*/
-	int sdtc;
+	int sdtc = 0;
 	struct sockaddr_in server = {};
 	
 	/*buffer para ver que recibo*/
@@ -21,8 +22,8 @@ int main (int argc, char *const argv[]){
 	/*variables para parsear linea de comandos*/
 	char line_original[150];
 
-
-
+	char *ret_val;
+	
 	/*return value of fork*/
 	int ret=0;
 	/*descriptores pipe (para que escriba el hijo)*/
@@ -30,22 +31,13 @@ int main (int argc, char *const argv[]){
 	/*descriptores pipe2 (para que escriba el padre)*/
 	int pipefd2[2];
 
-	char *ret_val;
-
-
 	char comando[15];
 	
 	int c=0;
 	
 	int leido;
-	int leido2;
-	
 		
 	const char fin[5] = "fin\n";
-
-
-
-	char respuesta[1024];
 
 	/*creo los pipes*/
 	if ( pipe (pipefd) != 0 ){
@@ -136,21 +128,54 @@ int main (int argc, char *const argv[]){
 
 				switch(c){
 			
-
+					/*get Timeline*/
 					case 1:
 						
+						/*mando al servidor el comando*/
+						if (write(sd, comando, strlen(comando)) < 0){
+							perror ("llamada write");
+	   						return -1;
 
-						getTimeline(sd, comando, pipefd2[1]);
-						
+	   					}
+						getTimeline(sd, pipefd2[1]);
 
 						break;
 
+					/*post a tweet*/
 					case 2:
 						
-					   	/*mando al servidor el comando y el tweet*/
+						
+						/*mando al servidor el comando y el tweet*/
 						while ((leido = read(pipefd[0], line_original, sizeof line_original)) >0){
 						
-							//A VECES TWITTEA BASURA. strstr
+							//A VECES TWITTEA BASURA. usar strstr
+							if(write (sd, line_original, leido - 4) <0){
+								perror ("llamada write en tweeting");
+								return -1;
+							}
+							ret_val = strstr(line_original, fin);
+
+							if (ret_val){
+								break;
+							}
+
+						}
+					   							
+						/*leo respuesta del servidor y la escribo en el pipe*/
+						
+						getTwitterResponse(sd, pipefd2[1]);	
+
+					   	
+						break;
+					
+					/*get a user's timeline*/
+					case 3:
+						
+						//REPITE "CLIENTE" muchas veces!!!
+						/*mando al servidor el comando y el nombre de usuario*/
+						while ((leido = read(pipefd[0], line_original, sizeof line_original)) >0){
+						
+						
 							if(write (sd, line_original, leido - 4) <0){
 								perror ("llamada write");
 								return -1;
@@ -163,29 +188,10 @@ int main (int argc, char *const argv[]){
 
 						}
 
-						
 						/*leo respuesta del servidor y la escribo en el pipe*/
-						 /*vacio el buf respuesta*/
-					   	memset (respuesta, 0, sizeof respuesta);
-						
-					
-						while ((leido2 = read (sd, respuesta, sizeof respuesta)) >0){
-							
-					
-							
-							if (write(pipefd2[1], respuesta, leido2) <0){
-								perror ("llamada write");
-								return -1;
-							}
-						
-
-							
-						}
-						write(pipefd2[1], fin, strlen(fin));
-						//close (pipefd2[1]);
-						
+						getTwitterResponse(sd, pipefd2[1]);	
+					   	write (1, "salgo del sw", 13);
 						break;
-					
 
 					default:
 						write (1, "No es un comando valido", 24);
