@@ -73,7 +73,7 @@ int childService(int pipefd, int pipefd2){
 			/*escribo lo q escribio el usuario en el pipe*/
 
 
-			if (write(pipefd, line_original, sizeof line_original) <0 ){
+			if (write(pipefd, line_original, leido) <0 ){
 				perror ("llamada write");
 				return -1;
 			}
@@ -86,8 +86,8 @@ int childService(int pipefd, int pipefd2){
 	
 			/*leo lo q me contesta el padre*/
 			while ((leido2 = read(pipefd2, respuesta, sizeof respuesta)) > 0){
-
-				if(write (1, respuesta, leido2) < 0){
+				//para q no diga fin
+				if(write (1, respuesta, leido2 -3) < 0){
     				perror ("llamada write");
     				return -1;
 				}
@@ -106,7 +106,7 @@ int childService(int pipefd, int pipefd2){
 			
 			}else if(strncmp(token, "user", 4) == 0){
 				
-				strncpy(comando, token, 5);
+				strncpy(comando, token, 4);
 				//ptr va a tener el resto de la cadena. Puede ser un tweet, un usuario, etc.
 				ptr = rest;
 
@@ -117,11 +117,12 @@ int childService(int pipefd, int pipefd2){
 					return -1;
 				}
 
-				/*envio comando y usuario*/
+				/*envio comando y usuario al padre*/
 				if (write(pipefd, line_original, leido) <0 ){
 					perror ("llamada write");
 					return -1;
 				}
+				
 
 				/*delimitador para que seapa hasta adonde leer*/
 				
@@ -129,28 +130,13 @@ int childService(int pipefd, int pipefd2){
 					perror ("llamada write");
 					return -1;
 				}
-				/*leo lo q me contesta el padre*/
-				
-				while ((leido2 = read(pipefd2, respuesta, sizeof respuesta)) > 0){
-
-					if(write (1, respuesta, leido2) < 0){
-	    				perror ("llamada write");
-	    				return -1;
-					}
-
-
-					/*tengo que indicarle hasta adonde leer*/
-					ret_val = strstr(respuesta, fin);
-			
-					if (ret_val){
-						memset(respuesta, 0, sizeof respuesta);
-						break;
-					}
 					
-			    	close (pipefd2);	
-				}	
-		
-				
+				/*leo el timeline del usuario especificado*/
+
+
+				showTimeline(pipefd2);
+
+
 				
 			}else{
 		

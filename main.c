@@ -4,8 +4,6 @@
 #include "twitter.h"
 
 
-
-
 int main (int argc, char *const argv[]){
 
 	
@@ -189,8 +187,8 @@ int main (int argc, char *const argv[]){
 						}
 
 						/*leo respuesta del servidor y la escribo en el pipe*/
-						getTwitterResponse(sd, pipefd2[1]);	
-					   	write (1, "salgo del sw", 13);
+						getTimeline(sd, pipefd2[1]);	
+					   
 						break;
 
 					default:
