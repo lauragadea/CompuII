@@ -86,8 +86,8 @@ int childService(int pipefd, int pipefd2){
 	
 			/*leo lo q me contesta el padre*/
 			while ((leido2 = read(pipefd2, respuesta, sizeof respuesta)) > 0){
-				//para q no diga fin
-				if(write (1, respuesta, leido2 -3) < 0){
+				
+				if(write (1, respuesta, leido2) < 0){
     				perror ("llamada write");
     				return -1;
 				}
