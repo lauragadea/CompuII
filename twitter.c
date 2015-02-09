@@ -108,3 +108,61 @@ int showTimeline (int pipefd2){
 		}
 		return 0;
 }
+
+int saveTimeline(int sd){
+
+	int leido;
+	/*para leer el timeline*/
+	char timeline[1024];
+	int descriptorArchivo;
+
+   	/*vacio el timeline*/
+   	memset (timeline, 0, sizeof timeline);
+
+
+   	remove ("./salida.txt");
+	//open devuelve un nro positivo si lo puede abrir y negativo, si no puede
+	if ((descriptorArchivo = open ("./salida.txt", O_CREAT | O_RDWR, S_IRWXU)) <0){ 
+    	perror ("error en open");
+    	return errno;
+    }
+
+   	/*leo del socket y escribo el timeline en el archivo*/
+   	while (	(leido = read (sd, timeline, sizeof timeline)) > 0){ 
+
+		if (write(descriptorArchivo, timeline, leido) <0){
+			perror ("llamada write");
+			return -1;
+		}
+		
+	}
+	
+
+	return 0;
+}
+
+int searchWord(char palabraBuscada[20]){
+	int leido;
+	char timeline[1024];
+	int descriptorArchivo;
+
+	//write (1, "srchword ", 10);
+	//write (1, palabraBuscada, sizeof palabraBuscada);
+
+	if ((descriptorArchivo = open ("./salida.txt", O_RDWR, S_IRWXU)) <0){ 
+    	perror ("error en open");
+    	return errno;
+    }
+		
+	while (	(leido = read (descriptorArchivo, timeline, sizeof timeline)) > 0){ 
+
+		if(strstr(timeline, palabraBuscada)){
+			write (1,"la encontre", 12);
+		}
+	}	
+
+
+	//}
+
+	return 0;
+}

@@ -52,6 +52,7 @@ int childService(int pipefd, int pipefd2){
 				    		
 			/*corroboro la longitud del tweet*/
 			len = verifyTweetLength(line_original);
+
 			if (len == 1){
 				write (1, "El tweet excede los 140 caracteres\n", 35);
 				break;
@@ -137,13 +138,42 @@ int childService(int pipefd, int pipefd2){
 				showTimeline(pipefd2);
 
 
+			}else if(strncmp(token, "search", 6) == 0){
+
+				strncpy(comando, token, 6);
+				//ptr va a tener el resto de la cadena. 
+				ptr = rest;
+
+				/*envio el comando en el pipe*/
+			
+				if (write(pipefd, comando, sizeof comando) <0 ){
+					perror ("llamada write");
+					return -1;
+				}
+
+				/*envio comando, usuario y palabra a buscar al padre*/
+				if (write(pipefd, line_original, leido) <0 ){
+					perror ("llamada write");
+					return -1;
+				}
+
+				/*delimitador para que seapa hasta adonde leer*/
 				
+				if (write(pipefd, fin, 4) <0 ){
+					perror ("llamada write");
+					return -1;
+				}
+
+
+
 			}else{
 		
     			if (write (1, "no es un comando valido\n", 25) <0){
     				perror ("llamada write");
     				return -1;
     			}
+
+
 
 			break;
 		}

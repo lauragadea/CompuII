@@ -5,7 +5,7 @@ TARGETS = twittie
 
 all: $(TARGETS)
 
-twittie: main.c checkCommand.c childService.c getTimeline.c showTimeline.c verifyTweetLength.c
+twittie: main.c twitter.c hijo.c padre.c
 	$(CC) $(CFLAGS) -o $@ $^ $(LDLIBS)
 
 

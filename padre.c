@@ -14,6 +14,10 @@ int checkCommand(char comando[15]){
 
 			c = 3;
 
+		}else if((strncmp(comando, "search", 6)) == 0){
+
+			c = 4;
+
 		}
 		return c;
 }

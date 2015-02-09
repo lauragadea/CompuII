@@ -34,6 +34,15 @@ int main (int argc, char *const argv[]){
 	int c=0;
 	
 	int leido;
+
+
+	//char *com;
+	//char *usr;
+	char *word;
+	char *saveptr;
+
+
+	char palabraBuscada[20];
 		
 	const char fin[5] = "fin\n";
 
@@ -102,7 +111,6 @@ int main (int argc, char *const argv[]){
 				/*paso solo los descriptores que va a usar*/
 				childService(pipefd[1], pipefd2[0]);
 
-				
 		   			
 		    	
 			}
@@ -146,7 +154,7 @@ int main (int argc, char *const argv[]){
 						/*mando al servidor el comando y el tweet*/
 						while ((leido = read(pipefd[0], line_original, sizeof line_original)) >0){
 						
-							//A VECES TWITTEA BASURA. usar strstr
+							//le resto 4 asi no manda el "fin" 
 							if(write (sd, line_original, leido - 4) <0){
 								perror ("llamada write en tweeting");
 								return -1;
@@ -169,11 +177,10 @@ int main (int argc, char *const argv[]){
 					/*get a user's timeline*/
 					case 3:
 						
-						//REPITE "CLIENTE" muchas veces!!!
 						/*mando al servidor el comando y el nombre de usuario*/
 						while ((leido = read(pipefd[0], line_original, sizeof line_original)) >0){
 						
-						
+							
 							if(write (sd, line_original, leido - 4) <0){
 								perror ("llamada write");
 								return -1;
@@ -189,6 +196,43 @@ int main (int argc, char *const argv[]){
 						/*leo respuesta del servidor y la escribo en el pipe*/
 						getTimeline(sd, pipefd2[1]);	
 					   
+						break;
+
+					/*search a word in a user's timeline*/
+					case 4:
+
+						/*mando al servidor el comando, el usuario y la palabra a buscar*/
+						while ((leido = read(pipefd[0], line_original, sizeof line_original)) >0){
+						
+						
+							
+							if(write (sd, line_original, leido - 4) <0){
+								perror ("llamada write");
+								return -1;
+							}
+							ret_val = strstr(line_original, fin);
+
+							if (ret_val){
+								break;
+							}
+
+						}
+
+						
+						//EL HIJO TIENE Q ESPERAR QUE EL PADRE TERMINE ANTES DE VOLVER A DECIR CLIENTE
+						saveTimeline(sd);
+						//comando
+						strtok_r(line_original, " ", &saveptr);
+						//usuario
+						strtok_r(NULL, " ", &saveptr);
+						//palabra a buscar
+						word = strtok_r(NULL, " ", &saveptr);
+						//write (1, word, sizeof word);
+						//OJO, deberia usar strncpy
+						strcpy (palabraBuscada, word);
+						printf ("palabraBuscada = %s\n", palabraBuscada);
+						//searchWord (palabraBuscada);
+					
 						break;
 
 					default:
