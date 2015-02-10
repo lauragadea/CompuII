@@ -71,8 +71,9 @@ int main (int argc, char *const argv[]){
 	memset (&server, 0, sizeof (server));
 	server.sin_family = AF_INET;
 	server.sin_port = htons(8001);
+	
 	 
-	//esta es la direc q deberia cambiar si cambio de pc?
+	
 	inet_pton (AF_INET, "127.0.0.1", &server.sin_addr);
 
 
@@ -81,7 +82,26 @@ int main (int argc, char *const argv[]){
 		perror ("error en connect 1: ");
 		return -1;
 	}
+	int opc;
+	char conf[20];
+	//direc por defecto
+	//int direc = '127.0.0.1';
+	char *direc;
+	char direccion[15] = {'\0'};
+	//parsea archivo de configuracion
+	while ((opc = getopt (argc, argv, "f:")) != -1){
+		switch (opc) {
+			case 'f':
+					printf ("Archivo de configuración utilizado: %s\n", optarg);
+					strcpy (conf, optarg);
 	
+					direc = parseo (conf);
+					strcpy(direccion,direc);
+					printf ("direccion servidor = %s\n", direccion);
+					break;
+		}
+
+	}
 
 	/*returns the pid of the child*/
 	ret = fork();
@@ -232,7 +252,7 @@ int main (int argc, char *const argv[]){
 						strcpy (palabraBuscada, word);
 						printf ("palabraBuscada = %s\n", palabraBuscada);
 						//searchWord (palabraBuscada);
-					
+						//bloquear el hijo hasta q el padre levante el mutex/señal//pasar la rutina al hijo
 						break;
 
 					default:
