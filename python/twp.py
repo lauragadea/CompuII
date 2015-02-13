@@ -41,9 +41,8 @@ serversocket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 print "socket created"
 #Para q no me diga "adress already in use"
 serversocket.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
-
-#bind the socket to a public host,
-serversocket.bind(('127.0.0.1', 8001))
+#bind the socket to a public host
+serversocket.bind(('', 8001))
 print "socket bind complete"
 #become a server socket
 serversocket.listen(5)
@@ -100,7 +99,22 @@ while True:
 		for status in result:
 			clientsocket.sendall (status.text)
 
-		
+	elif (linea.startswith("search")):
+		palabras = linea.split(" ");
+		i = 0;
+		#recorro la linea: comando + usuario + palabra a buscar
+		for palabra in palabras:
+			if (i == 1):
+				usuario = palabra
+
+			i = i+1
+
+		result = tweepy.Cursor(api.user_timeline, id=usuario).items(50)
+		clientsocket.send ('Timeline de @' + usuario)
+		for status in result:
+			print (status.text)
+			clientsocket.sendall (status.text)
+
 		
 	else:
 		print "no es un comando valido"
@@ -108,15 +122,6 @@ while True:
 	clientsocket.close()
 	
 	
-
-
-	#clientsocket.send('Thank you for connecting ' + user.name + '. Obama timeline today: ')
-	
-	#data = clientsocket.recv(1024)
-	#shows last BarackObama tweets
-	#result = tweepy.Cursor(api.user_timeline, id="BarackObama").items(50)
-	#for status in result:
-	#	clientsocket.sendall(status.text)
 
 	
 	
