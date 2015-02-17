@@ -89,24 +89,28 @@ int showTimeline (int pipefd2){
 	char *ret_val;
 
 
-		while ((leido = read(pipefd2, timeline, sizeof timeline)) > 0){
+	while ((leido = read(pipefd2, timeline, sizeof timeline)) > 0){
 
+		/*tengo que indicarle hasta donde leer*/
+		ret_val = strstr(timeline, "fin\n");
 
-			if(write (1, timeline, leido) < 0)
-{				perror ("llamada write");
-			return -1;
+		if (ret_val){
+			if(write (1, timeline, leido - 4) < 0){
+				perror ("llamada write");
+				return -1;
 			}
-			/*tengo que indicarle hasta donde leer*/
-			ret_val = strstr(timeline, "fin\n");
-
-			if (ret_val){
-				memset(timeline, 0, sizeof timeline);
-				break;
-			}
-
-	    	
+			memset(timeline, 0, sizeof timeline);
+			break;
 		}
-		return 0;
+		if(write (1, timeline, leido) < 0){
+			perror ("llamada write");
+			return -1;
+		}
+		
+
+    	
+	}
+	return 0;
 }
 
 int saveTimeline(int sd){
@@ -115,15 +119,15 @@ int saveTimeline(int sd){
 	/*para leer el timeline*/
 	char timeline[1024];
 	int descriptorArchivo;
-
+	char *path = "./salida.txt";
    	/*vacio el timeline*/
    	memset (timeline, 0, sizeof timeline);
 
 
-   	remove ("./salida.txt");
-	//open devuelve un nro positivo si lo puede abrir y negativo, si no puede
-	if ((descriptorArchivo = open ("./salida.txt", O_CREAT | O_RDWR, S_IRWXU)) <0){ 
-    	perror ("error en open");
+   	unlink (path);
+	//open devuelve un nro positivo si lo puede abrir y negativo, si no puede. uso O_APPEND para q no sobre escriba
+	if ((descriptorArchivo = open ("./salida.txt", O_CREAT | O_RDWR | O_APPEND, S_IRWXU)) <0){ 
+    	perror ("error en open savetl");
     	return errno;
     }
 
@@ -136,33 +140,64 @@ int saveTimeline(int sd){
 		}
 		
 	}
-	
+	close(descriptorArchivo);
 
 	return 0;
 }
 
-int searchWord(char palabraBuscada[20]){
+int searchWord(char *palabraBuscada, int pipefd2){
 	int leido;
 	char timeline[1024];
 	int descriptorArchivo;
+	int countWords = 0;
+	char *rest;
+	char *ptr;
+	char palabra[20];
+	char *token;
+	char tmp[20];
+	
+		
+	/*delimiter*/
+	const char fin[5] = "fin\n";
+	int var =0;
+	
 
-	//write (1, "srchword ", 10);
-	//write (1, palabraBuscada, sizeof palabraBuscada);
-
-	if ((descriptorArchivo = open ("./salida.txt", O_RDWR, S_IRWXU)) <0){ 
-    	perror ("error en open");
+	if ((descriptorArchivo = open ("./salida.txt", O_RDWR | O_APPEND, S_IRWXU)) <0){ 
+    	perror ("error en open srchwrd ");
     	return errno;
     }
-		
+   	//hago strcpy para poder calcular el strlen cuando uso strncmp
+   	strcpy(palabra, palabraBuscada);
+   	
 	while (	(leido = read (descriptorArchivo, timeline, sizeof timeline)) > 0){ 
-
-		if(strstr(timeline, palabraBuscada)){
-			write (1,"la encontre", 12);
+		//ptr apunta a timeline. Hago una copia para no perdero con el strtok
+		ptr  = timeline;
+		printf ("Imprimo timeline palabra por palabra: \n");
+		while ((token = strtok_r (ptr, " ", &rest))) {
+			strcpy (tmp, token);
+			printf ("%s ", tmp);
+			if (strncmp(token, palabra, strlen(palabra)) == 0){
+				var = 1;
+				countWords = countWords + 1;
+				//strcpy (tmp, token);
+				printf ("ENCONTREPALABRABUSCADA  = %s\n", tmp);
+			}
+			ptr = NULL;
 		}
+
+		
 	}	
+	if (var ==1){
+		printf ("The word was found %d times \n", countWords);
+	}else{
+		printf ("Word not found\n");
+	}
+	close (descriptorArchivo);
 
 
-	//}
+	write(pipefd2, fin, strlen(fin));
+
+	
 
 	return 0;
 }

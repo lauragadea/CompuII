@@ -47,6 +47,10 @@ int checkCommand(char comando[15]){
 
 			c = 4;
 
+		}else if((strncmp(comando, "exit", 4)) == 0){
+
+			c = 5;
+
 		}
 		return c;
 }

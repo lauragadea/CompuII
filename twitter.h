@@ -8,7 +8,7 @@
 	int verifyTweetLength(char line_original[150]);
 	int getTwitterResponse(int sd, int pipefd2);
 	int saveTimeline(int sd);
-	int searchWord(char palabrita[20]);
+	int searchWord(char palabraBuscada[20], int pipefd2);
 
 	
 	

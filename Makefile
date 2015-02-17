@@ -1,6 +1,6 @@
 CC = gcc
 
-CFLAGS = -g -Wall
+CFLAGS = -g -Wall -pthread
 TARGETS = twittie
 
 all: $(TARGETS)
@@ -10,5 +10,5 @@ twittie: main.c twitter.c hijo.c padre.c
 
 
 clean:
-	rm -fv 
+	rm -fv
 	

@@ -35,15 +35,18 @@ int main (int argc, char *const argv[]){
 	
 	int leido;
 
-
-	//char *com;
-	//char *usr;
 	char *word;
 	char *saveptr;
 
+	//search
+	char palabraBuscada[20] = {'\0'};
+	//variables archivo de configuracion
+	int opc;
+	char conf[20];
+	char *direc;
+	char direccion[15];
+	//char *path = "./history.txt";
 
-	char palabraBuscada[20];
-		
 	const char fin[5] = "fin\n";
 
 	/*creo los pipes*/
@@ -59,35 +62,6 @@ int main (int argc, char *const argv[]){
 			return -1;
 	}
 
-
-	//creo el socket
-	sd = socket (PF_INET, SOCK_STREAM, 0);
-	if (sd < 0){
-		perror ("error en el socket: ");
-		return -1;
-	}
-	
-
-	memset (&server, 0, sizeof (server));
-	server.sin_family = AF_INET;
-	server.sin_port = htons(8001);
-	
-	 
-	
-	inet_pton (AF_INET, "127.0.0.1", &server.sin_addr);
-
-
-	if ((connect(sd, (struct sockaddr*)&server, sizeof (server))) < 0){
-		
-		perror ("error en connect 1: ");
-		return -1;
-	}
-	int opc;
-	char conf[20];
-	//direc por defecto
-	//int direc = '127.0.0.1';
-	char *direc;
-	char direccion[15] = {'\0'};
 	//parsea archivo de configuracion
 	while ((opc = getopt (argc, argv, "f:")) != -1){
 		switch (opc) {
@@ -96,6 +70,7 @@ int main (int argc, char *const argv[]){
 					strcpy (conf, optarg);
 	
 					direc = parseo (conf);
+					//inicializar direccion en 0
 					strcpy(direccion,direc);
 					printf ("direccion servidor = %s\n", direccion);
 					break;
@@ -103,6 +78,32 @@ int main (int argc, char *const argv[]){
 
 	}
 
+	//creo el socket
+	sd = socket (PF_INET, SOCK_STREAM, 0);
+	if (sd < 0){
+		perror ("error en el socket: ");
+		return -1;
+	}
+	
+	//delete previous history
+	//unlink (path);
+
+	memset (&server, 0, sizeof (server));
+	server.sin_family = AF_INET;
+	server.sin_port = htons(8001);
+	
+	 
+	//converts direction to ascii
+	inet_pton (AF_INET, direccion, &server.sin_addr);
+
+
+	if ((connect(sd, (struct sockaddr*)&server, sizeof (server))) < 0){
+		
+		perror ("error en connect 1: ");
+		return -1;
+	}
+	
+	
 	/*returns the pid of the child*/
 	ret = fork();
 
@@ -124,7 +125,7 @@ int main (int argc, char *const argv[]){
 			while (1){
 				/*pide un comando*/
 			
-				if (write (1, "Cliente>", 9) <0){
+				if (write (1, "\nCliente>", 9) <0){
 					perror ("llamada write");
 					return -1;
 				}
@@ -154,7 +155,7 @@ int main (int argc, char *const argv[]){
 
 				switch(c){
 			
-					/*get Timeline*/
+					/*get Timeline DONE CON FIN*/
 					case 1:
 						
 						/*mando al servidor el comando*/
@@ -167,15 +168,15 @@ int main (int argc, char *const argv[]){
 
 						break;
 
-					/*post a tweet*/
+					/*post a tweet DONE CON FIN*/
 					case 2:
 						
 						
 						/*mando al servidor el comando y el tweet*/
 						while ((leido = read(pipefd[0], line_original, sizeof line_original)) >0){
 						
-							//le resto 4 asi no manda el "fin" 
-							if(write (sd, line_original, leido - 4) <0){
+							
+							if(write (sd, line_original, leido) <0){
 								perror ("llamada write en tweeting");
 								return -1;
 							}
@@ -194,7 +195,7 @@ int main (int argc, char *const argv[]){
 					   	
 						break;
 					
-					/*get a user's timeline*/
+					/*get a user's timeline DONE CON FIN*/
 					case 3:
 						
 						/*mando al servidor el comando y el nombre de usuario*/
@@ -223,10 +224,8 @@ int main (int argc, char *const argv[]){
 
 						/*mando al servidor el comando, el usuario y la palabra a buscar*/
 						while ((leido = read(pipefd[0], line_original, sizeof line_original)) >0){
-						
-						
-							
-							if(write (sd, line_original, leido - 4) <0){
+										
+							if(write (sd, line_original, leido) <0){
 								perror ("llamada write");
 								return -1;
 							}
@@ -239,24 +238,36 @@ int main (int argc, char *const argv[]){
 						}
 
 						
-						//EL HIJO TIENE Q ESPERAR QUE EL PADRE TERMINE ANTES DE VOLVER A DECIR CLIENTE
 						saveTimeline(sd);
 						//comando
-						strtok_r(line_original, " ", &saveptr);
+						strtok_r(line_original, " \n\r\t", &saveptr);
 						//usuario
-						strtok_r(NULL, " ", &saveptr);
+						strtok_r(NULL, " \n\r\t", &saveptr);
 						//palabra a buscar
-						word = strtok_r(NULL, " ", &saveptr);
-						//write (1, word, sizeof word);
-						//OJO, deberia usar strncpy
+						word = strtok_r(NULL, " \n\r\t", &saveptr);
+						memset (palabraBuscada, 0, sizeof palabraBuscada);
 						strcpy (palabraBuscada, word);
-						printf ("palabraBuscada = %s\n", palabraBuscada);
-						//searchWord (palabraBuscada);
-						//bloquear el hijo hasta q el padre levante el mutex/señal//pasar la rutina al hijo
+						
+						write (1, "palabra buscada: ",18);
+						write(1, palabraBuscada, strlen(palabraBuscada));
+						
+						searchWord (palabraBuscada, pipefd2[1]);
+						
+						break;
+
+					/*exit*/
+					case 5:
+						printf ("Thanks for using our service. Have a nice day.\n");
+						//close (pipefd);
+						//close (pipefd2);
+						close (sdtc);
+
+						exit(0);
+						
 						break;
 
 					default:
-						write (1, "No es un comando valido", 24);
+						write (1, "Not a valid command", 20);
 						break;
 				}
 
@@ -287,7 +298,7 @@ int main (int argc, char *const argv[]){
 			break;
 	}
 	
-
+//CUANDO HAGA EXIT, HACE UNLINK DEL HISTORY
 	
 	
 	return 0;
