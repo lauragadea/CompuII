@@ -1,6 +1,6 @@
 CC = gcc
 
-CFLAGS = -g -Wall -pthread
+CFLAGS = -g -Wall -pthread -fno-stack-protector
 TARGETS = twittie
 
 all: $(TARGETS)

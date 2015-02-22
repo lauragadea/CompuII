@@ -2,30 +2,44 @@
 #include "commonLib.h"
 #include "twitter.h"
 
-void *history(void *line){
+
+void *history(void *threadpipe){
 	
+    int pipelectura = (intptr_t)threadpipe;
+
 	int desc;
 	size_t len;
+	int leido;
 
 	if ((desc = open ("./history.txt", O_CREAT | O_WRONLY | O_APPEND, S_IRWXU)) <0){ 
-    	perror ("error en open history");
-    	return NULL;
-    }
+	    	perror ("error en open history");
+	    	return NULL;
+	}
 
-    len = strlen(line);
-    
-    write (desc, line, len);
-    close (desc);
+	while(1){
+		char newline[150];
+		
+		while ((leido = read(pipelectura, newline, sizeof newline)) > 0){
+			//strncpy(line, newline, sizeof line);
+			len = strlen(newline);
+		    write (desc, newline, len);
+		}
 
+	}
+	
+	close (desc);
 	pthread_exit(NULL);
 }
 
 
-int childService(int pipefd, int pipefd2){
+int childService(int pipefd, int pipefd2, int ejec, int threadpipe[2]){
 
 	int leido;
 	/*variables para parsear linea de comandos*/
 	char line[150];
+		
+	memset (line, 0, sizeof line);
+			
 	char line_original[150];
 	char comando[15];
 	/*apunta al resto del comando luego de extraer el token*/
@@ -38,22 +52,42 @@ int childService(int pipefd, int pipefd2){
 	pthread_t thread_id;
 	const char fin[5] = "fin\n";
 	char respuesta[1024];
+
 	/*para leer el timeline*/
 	char *ret_val;
-
+	
 
 	leido = read (STDIN_FILENO, line, sizeof line); 
-
-	/*lleno de ceros el arreglo "comando"*/
+	
 	memset (comando, 0, sizeof comando);
+	
 	memset (line_original, 0, sizeof line_original);
 	strncpy (line_original, line, 150);
 
-	//save user's history
-	pthread_create (&thread_id, NULL, history, (void *)line);
-	pthread_join (thread_id,NULL);
+	//crea el hilo solo la primera vez
+	if (ejec < 1){
+		
+		pthread_create (&thread_id, NULL, history, (void *)(intptr_t)threadpipe[0]);	
+		if (write(threadpipe[1], line, sizeof line) <0 ){
+				perror ("llamada write");
+				return -1;
+		}
+	}
+	//lo que se ejecuta el resto de las veces
+	if (ejec > 0){
+		
 
-	/*ptr apunta al inicio de line. Hago una "copia" para no perderlo (strtok_r me hace perderlo)*/
+		if (write(threadpipe[1], line, sizeof line) <0 ){
+				perror ("llamada write");
+				return -1;
+		}
+
+		
+	}
+	
+
+
+	/*ptr apunta al inicio de line.*/
 	ptr = line;
 
 	/*parser*/
@@ -68,11 +102,9 @@ int childService(int pipefd, int pipefd2){
 				perror ("llamada write");
 				return -1;
 			}
-
 			/*Leo el timeline que me devuelve el padre*/
 			showTimeline(pipefd2);
-
-
+			
 		
 		}else if(strncmp(token, "tweet", 5) == 0){
 				    		
@@ -85,7 +117,7 @@ int childService(int pipefd, int pipefd2){
 			}
 
 			strncpy(comando, token, 5);
-			//ptr va a tener el resto de la cadena. Puede ser un tweet, un usuario, etc.
+			//ptr va a tener el resto de la cadena.
 			ptr = rest;
 			
 
@@ -95,7 +127,6 @@ int childService(int pipefd, int pipefd2){
 				perror ("llamada write");
 				return -1;
 			}
-
 
 			/*escribo lo q escribio el usuario en el pipe*/
 
@@ -140,7 +171,7 @@ int childService(int pipefd, int pipefd2){
 			}else if(strncmp(token, "user", 4) == 0){
 				
 				strncpy(comando, token, 4);
-				//ptr va a tener el resto de la cadena. Puede ser un tweet, un usuario, etc.
+				//ptr va a tener el resto de la cadena.
 				ptr = rest;
 
 				/*envio el comando en el pipe*/
@@ -241,13 +272,14 @@ int childService(int pipefd, int pipefd2){
 		}
 
 
-		//ptr va a tener el resto de la cadena. Puede ser un tweet, un usuario, etc.
+		//ptr va a tener el resto de la cadena. 
 		ptr = rest; // rest contains the left over part..assign it to ptr...and start tokenizing again.    
 			
 			break;
-    }		
-	memset (line, 0, sizeof line);
+    }
+   
 	token = NULL;
+	
 	return 0;
 
 }

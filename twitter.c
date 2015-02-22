@@ -67,9 +67,6 @@ int verifyTweetLength(char line_original[150]){
 		}
 	}
 
-	//write (1, "las letras totales del tw son: ", 32);
-	//printf ("%d\n", charCount);
-
 	if (charCount > 140){
 		return 1;
 	}else{
@@ -150,48 +147,54 @@ int searchWord(char *palabraBuscada, int pipefd2){
 	char timeline[1024];
 	int descriptorArchivo;
 	int countWords = 0;
-	char *rest;
 	char *ptr;
 	char palabra[20];
 	char *token;
 	char tmp[20];
+	char *rest;
 	
 		
 	/*delimiter*/
 	const char fin[5] = "fin\n";
-	int var =0;
+	
 	
 
-	if ((descriptorArchivo = open ("./salida.txt", O_RDWR | O_APPEND, S_IRWXU)) <0){ 
+	if ((descriptorArchivo = open ("./salida.txt", O_RDONLY)) < 0){ 
     	perror ("error en open srchwrd ");
     	return errno;
     }
+
+    memset(palabra, 0, sizeof palabra);
+    memset(tmp, 0, sizeof tmp);
+    memset(timeline, 0, sizeof timeline);
+
    	//hago strcpy para poder calcular el strlen cuando uso strncmp
-   	strcpy(palabra, palabraBuscada);
-   	
+   	strncpy(palabra, palabraBuscada, sizeof palabra);
+   	printf ("la palabra buscada es %s\n", palabra);
+
 	while (	(leido = read (descriptorArchivo, timeline, sizeof timeline)) > 0){ 
 		//ptr apunta a timeline. Hago una copia para no perdero con el strtok
 		ptr  = timeline;
 		printf ("Imprimo timeline palabra por palabra: \n");
-		while ((token = strtok_r (ptr, " ", &rest))) {
-			strcpy (tmp, token);
+		while ((token = strtok_r (ptr, " \r\n\t.!?¿-_,;", &rest))) {
+			
 			printf ("%s ", tmp);
-			if (strncmp(token, palabra, strlen(palabra)) == 0){
-				var = 1;
-				countWords = countWords + 1;
-				//strcpy (tmp, token);
-				printf ("ENCONTREPALABRABUSCADA  = %s\n", tmp);
+		
+			if (strncmp(token, palabra, strlen(palabra)) == 0){	
+				
+				countWords++;
 			}
 			ptr = NULL;
 		}
-
+		memset (timeline, 0, sizeof timeline);
 		
 	}	
-	if (var ==1){
-		printf ("The word was found %d times \n", countWords);
-	}else{
-		printf ("Word not found\n");
-	}
+	if (countWords > 0) {
+        printf ("\nThe word was found %d times \n", countWords);
+    } else {
+        printf ("Word not found\n");
+    }
+
 	close (descriptorArchivo);
 
 

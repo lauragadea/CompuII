@@ -18,6 +18,7 @@
 	#include <pthread.h>
 	#include <sys/stat.h>
 	#include <semaphore.h>
+	#include <signal.h>
 
 	
 #endif

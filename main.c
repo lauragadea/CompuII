@@ -1,3 +1,4 @@
+#include "estructura.h"
 #include "commonLib.h"
 #include "padre.h"
 #include "hijo.h"
@@ -7,8 +8,11 @@
 int main (int argc, char *const argv[]){
 
 	
+	int ejec = 0;
 	/*socket descriptor*/
 	int sd;
+
+	connectionData cdata;
 
 	/*socket descriptor totalmente conectado*/
 	int sdtc = 0;
@@ -29,6 +33,8 @@ int main (int argc, char *const argv[]){
 	/*descriptores pipe2 (para que escriba el padre)*/
 	int pipefd2[2];
 
+	int threadpipe[2];
+
 	char comando[15];
 	
 	int c=0;
@@ -43,9 +49,9 @@ int main (int argc, char *const argv[]){
 	//variables archivo de configuracion
 	int opc;
 	char conf[20];
-	char *direc;
-	char direccion[15];
-	//char *path = "./history.txt";
+	const char *dirip;
+	char *path = "./history.txt";
+	unlink (path);
 
 	const char fin[5] = "fin\n";
 
@@ -61,6 +67,12 @@ int main (int argc, char *const argv[]){
 			perror ("pipe 2");
 			return -1;
 	}
+	//pipe para el hijo y el hilo
+	if ( pipe (threadpipe) != 0 ){
+
+			perror ("pipe");
+			return -1;
+	}
 
 	//parsea archivo de configuracion
 	while ((opc = getopt (argc, argv, "f:")) != -1){
@@ -69,10 +81,12 @@ int main (int argc, char *const argv[]){
 					printf ("Archivo de configuración utilizado: %s\n", optarg);
 					strcpy (conf, optarg);
 	
-					direc = parseo (conf);
-					//inicializar direccion en 0
-					strcpy(direccion,direc);
-					printf ("direccion servidor = %s\n", direccion);
+					cdata = parseo (conf);
+					
+					dirip = cdata.direc; 
+					printf ("direccion servidor = %s\n", dirip);
+					printf ("puerto = %d\n", cdata.port);
+
 					break;
 		}
 
@@ -85,16 +99,17 @@ int main (int argc, char *const argv[]){
 		return -1;
 	}
 	
-	//delete previous history
-	//unlink (path);
 
 	memset (&server, 0, sizeof (server));
 	server.sin_family = AF_INET;
-	server.sin_port = htons(8001);
+	server.sin_port = htons(cdata.port);
 	
 	 
 	//converts direction to ascii
-	inet_pton (AF_INET, direccion, &server.sin_addr);
+	//inet_pton (AF_INET, "192.168.10.23", &server.sin_addr);
+	//printf ("%x \n", server.sin_addr);
+	inet_pton (AF_INET, dirip, &server.sin_addr);
+	//printf ("%x \n", server.sin_addr);
 
 
 	if ((connect(sd, (struct sockaddr*)&server, sizeof (server))) < 0){
@@ -123,6 +138,8 @@ int main (int argc, char *const argv[]){
 			close (pipefd2[1]);
 
 			while (1){
+				
+			
 				/*pide un comando*/
 			
 				if (write (1, "\nCliente>", 9) <0){
@@ -130,9 +147,8 @@ int main (int argc, char *const argv[]){
 					return -1;
 				}
 				/*paso solo los descriptores que va a usar*/
-				childService(pipefd[1], pipefd2[0]);
-
-		   			
+				childService(pipefd[1], pipefd2[0], ejec, threadpipe);
+				ejec++;
 		    	
 			}
         	return 0;	
@@ -155,7 +171,7 @@ int main (int argc, char *const argv[]){
 
 				switch(c){
 			
-					/*get Timeline DONE CON FIN*/
+					/*get Timeline*/
 					case 1:
 						
 						/*mando al servidor el comando*/
@@ -168,7 +184,7 @@ int main (int argc, char *const argv[]){
 
 						break;
 
-					/*post a tweet DONE CON FIN*/
+					/*post a tweet*/
 					case 2:
 						
 						
@@ -186,8 +202,7 @@ int main (int argc, char *const argv[]){
 								break;
 							}
 
-						}
-					   							
+						}						
 						/*leo respuesta del servidor y la escribo en el pipe*/
 						
 						getTwitterResponse(sd, pipefd2[1]);	
@@ -195,7 +210,7 @@ int main (int argc, char *const argv[]){
 					   	
 						break;
 					
-					/*get a user's timeline DONE CON FIN*/
+					/*get a user's timeline*/
 					case 3:
 						
 						/*mando al servidor el comando y el nombre de usuario*/
@@ -211,7 +226,6 @@ int main (int argc, char *const argv[]){
 							if (ret_val){
 								break;
 							}
-
 						}
 
 						/*leo respuesta del servidor y la escribo en el pipe*/
@@ -237,7 +251,6 @@ int main (int argc, char *const argv[]){
 
 						}
 
-						
 						saveTimeline(sd);
 						//comando
 						strtok_r(line_original, " \n\r\t", &saveptr);
@@ -252,14 +265,13 @@ int main (int argc, char *const argv[]){
 						write(1, palabraBuscada, strlen(palabraBuscada));
 						
 						searchWord (palabraBuscada, pipefd2[1]);
-						
+						 	
 						break;
 
 					/*exit*/
 					case 5:
 						printf ("Thanks for using our service. Have a nice day.\n");
-						//close (pipefd);
-						//close (pipefd2);
+					
 						close (sdtc);
 
 						exit(0);
@@ -280,16 +292,17 @@ int main (int argc, char *const argv[]){
 					return -1;
 				}
 				server.sin_family = AF_INET;
-				server.sin_port = htons(8001);
+				server.sin_port = htons(cdata.port);
 	 
-				//esta es la direc q deberia cambiar si cambio de pc?
-				inet_pton (AF_INET, "127.0.0.1", &server.sin_addr);
+				
+				inet_pton (AF_INET, dirip, &server.sin_addr);
 
 
 
 				if ((connect(sd, (struct sockaddr*)&server, sizeof (server))) < 0){
 		
 					perror ("error en connect 2: ");
+					kill (ret, SIGKILL);
 					return -1;
 				}
 			
@@ -298,7 +311,7 @@ int main (int argc, char *const argv[]){
 			break;
 	}
 	
-//CUANDO HAGA EXIT, HACE UNLINK DEL HISTORY
+
 	
 	
 	return 0;
