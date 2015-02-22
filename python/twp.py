@@ -6,6 +6,7 @@ import binascii
 import struct
 import errno
 import shlex
+from tweepy.error import TweepError
 
 #resuelve el error: UnicodeEncodeError: 'ascii' codec can't encode character u'\xe1' in position 1
 reload(sys)
@@ -49,13 +50,12 @@ serversocket.listen(5)
 print "socket now listening..."
 
 #para volver a usar el puerto
-#serversocket.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+
 
 
 while True:
 
 	#accept connections
-	#check error!!! (ver que devuelve accept)
 	
 	(clientsocket, address) = serversocket.accept()
 	print 'Got connection from', address
@@ -83,7 +83,7 @@ while True:
 		#print comando
 		#print tweet
 		api.update_status(tweet)
-		res = "Tu tweet fue posteado"
+		res = "You tweet was posted. Thank you"
 		
 		clientsocket.sendall(res)
 		
@@ -94,10 +94,16 @@ while True:
 		comando = linea[0:index+4]
 		usuario = linea[index+5:len(linea)]
 
-		result = tweepy.Cursor(api.user_timeline, id=usuario).items(50)
-		clientsocket.send ('Timeline de @' + usuario)
-		for status in result:
-			clientsocket.sendall (status.text)
+		try:
+
+			result = tweepy.Cursor(api.user_timeline, id=usuario).items(50)
+			clientsocket.send ('Timeline @' + usuario)
+			for status in result:
+				clientsocket.sendall (status.text)
+		except TweepError as e:
+			print "error: " + e.message
+			clientsocket.sendall("El usuario no existe o es privado")
+
 
 	elif (linea.startswith("search")):
 		palabras = linea.split(" ");
@@ -110,14 +116,14 @@ while True:
 			i = i+1
 
 		result = tweepy.Cursor(api.user_timeline, id=usuario).items(50)
-		clientsocket.send ('Timeline de @' + usuario)
+		clientsocket.send ('Timeline @' + usuario)
 		for status in result:
-			print (status.text)
+	
 			clientsocket.sendall (status.text)
 
 		
 	else:
-		print "no es un comando valido"
+		print "Not a valid command"
 
 	clientsocket.close()
 	
